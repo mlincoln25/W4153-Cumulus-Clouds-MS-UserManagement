@@ -29,4 +29,51 @@ public class Booker {
   @Column(name = "booking_history", columnDefinition = "TEXT")
   private String bookingHistory;
 
+  public UUID getBookerId() {
+    return bookerId;
+  }
+
+  public void setBookerId(UUID bookerId) {
+    this.bookerId = bookerId;
+  }
+
+  public Account getAccount() {
+    return account;
+  }
+
+  public void setAccount(Account account) {
+    this.account = account;
+  }
+
+  public String getOrganizationName() {
+    return organizationName;
+  }
+
+  public void setOrganizationName(String organizationName) {
+    this.organizationName = organizationName;
+  }
+
+  public List<String> getPreferredGenres() {
+    return preferredGenres;
+  }
+
+  public void setPreferredGenres(List<String> preferredGenres) {
+    this.preferredGenres = preferredGenres;
+  }
+
+  public String getEventType() {
+    return eventType;
+  }
+
+  public void setEventType(String eventType) {
+    this.eventType = eventType;
+  }
+
+  public String getBookingHistory() {
+    return bookingHistory;
+  }
+
+  public void setBookingHistory(String bookingHistory) {
+    this.bookingHistory = bookingHistory;
+  }
 }
