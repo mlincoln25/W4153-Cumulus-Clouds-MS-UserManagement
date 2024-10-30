@@ -1,5 +1,10 @@
 package com.cumulusclouds.w4153cumuluscloudsmsusermanagement.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,11 +22,43 @@ public class MusicianController {
   @Autowired
   private MusicianRepository musicianRepository;
 
-  @GetMapping
+  @Operation(
+          summary = "Retrieve all musicians",
+          description = "Fetches a list of all available musicians from the database."
+  )
+  @ApiResponse(
+          responseCode = "200",
+          description = "Successfully retrieved the list of musicians",
+          content = @Content(
+                  mediaType = "application/json",
+                  schema = @Schema(implementation = Musician.class)
+          )
+  )
+  @GetMapping("/")
   public ResponseEntity<List<Musician>> getAllMusicians() {
     return ResponseEntity.ok(musicianRepository.findAll());
   }
 
+  @Operation(
+          summary = "Retrieve musician by ID",
+          description = "Fetches a musician based on the provided musician ID."
+  )
+  @ApiResponse(
+          responseCode = "200",
+          description = "Musician found successfully",
+          content = @Content(
+                  mediaType = "application/json",
+                  schema = @Schema(implementation = Musician.class)
+          )
+  )
+  @ApiResponse(
+          responseCode = "404",
+          description = "Musician not found"
+  )
+  @Parameter(
+          description = "ID of the musician to retrieve",
+          required = true
+  )
   @GetMapping("/{id}")
   public ResponseEntity<Musician> getMusicianById(@PathVariable UUID id) {
     return musicianRepository.findById(id)
@@ -29,11 +66,47 @@ public class MusicianController {
       .orElse(ResponseEntity.notFound().build());
   }
 
-  @PostMapping
+  @Operation(
+          summary = "Create a new musician",
+          description = "Creates a new musician with the provided musician details."
+  )
+  @ApiResponse(
+          responseCode = "200",
+          description = "Musician created successfully",
+          content = @Content(
+                  mediaType = "application/json",
+                  schema = @Schema(implementation = Musician.class)
+          )
+  )
+  @ApiResponse(
+          responseCode = "400",
+          description = "Invalid musician data provided"
+  )
+  @PostMapping("/")
   public ResponseEntity<Musician> createMusician(@RequestBody Musician musician) {
     return ResponseEntity.ok(musicianRepository.save(musician));
   }
 
+  @Operation(
+          summary = "Update an existing musician",
+          description = "Updates the details of an existing musician based on the provided musician ID."
+  )
+  @ApiResponse(
+          responseCode = "200",
+          description = "Musician updated successfully",
+          content = @Content(
+                  mediaType = "application/json",
+                  schema = @Schema(implementation = Musician.class)
+          )
+  )
+  @ApiResponse(
+          responseCode = "404",
+          description = "Musician not found"
+  )
+  @Parameter(
+          description = "ID of the musician to update",
+          required = true
+  )
   @PutMapping("/{id}")
   public ResponseEntity<Musician> updateMusician(@PathVariable UUID id, @RequestBody Musician musicianDetails) {
     return musicianRepository.findById(id).map(musician -> {
@@ -46,6 +119,22 @@ public class MusicianController {
     }).orElse(ResponseEntity.notFound().build());
   }
 
+  @Operation(
+          summary = "Delete a musician",
+          description = "Deletes the musician with the specified musician ID."
+  )
+  @ApiResponse(
+          responseCode = "204",
+          description = "Musician deleted successfully"
+  )
+  @ApiResponse(
+          responseCode = "404",
+          description = "Musician not found"
+  )
+  @Parameter(
+          description = "ID of the musician to delete",
+          required = true
+  )
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> deleteMusician(@PathVariable UUID id) {
     if (musicianRepository.existsById(id)) {
