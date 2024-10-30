@@ -32,4 +32,60 @@ public class Musician {
   @Column(name = "availability", columnDefinition = "TEXT")
   private String availability;
   
+  public UUID getMusicId() {
+      return musicId;
+  }
+
+  public void setMusicId(UUID musicId) {
+      this.musicId = musicId;
+  }
+
+  public Account getAccount() {
+      return account;
+  }
+
+  public void setAccount(Account account) {
+      this.account = account;
+  }
+
+  public String getGenre() {
+      return genre;
+  }
+
+  public void setGenre(String genre) {
+      this.genre = genre;
+  }
+
+  public List<String> getInstrumentsPlayed() {
+      return instrumentsPlayed;
+  }
+
+  public void setInstrumentsPlayed(List<String> instrumentsPlayed) {
+      this.instrumentsPlayed = instrumentsPlayed;
+  }
+
+  public int getYearsOfExperience() {
+      return yearsOfExperience;
+  }
+
+  public void setYearsOfExperience(int yearsOfExperience) {
+      this.yearsOfExperience = yearsOfExperience;
+  }
+
+  public List<String> getSampleWorks() {
+      return sampleWorks;
+  }
+
+  public void setSampleWorks(List<String> sampleWorks) {
+      this.sampleWorks = sampleWorks;
+  }
+
+  public String getAvailability() {
+      return availability;
+  }
+
+  public void setAvailability(String availability) {
+      this.availability = availability;
+  }
+  
 }
