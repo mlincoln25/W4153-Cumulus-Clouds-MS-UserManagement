@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 
 import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.model.Musician;
 import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.repository.MusicianRepository;
@@ -60,9 +62,14 @@ public class MusicianController {
           required = true
   )
   @GetMapping("/{id}")
-  public ResponseEntity<Musician> getMusicianById(@PathVariable UUID id) {
+  public ResponseEntity<EntityModel<Musician>> getMusicianById(@PathVariable UUID id) {
     return musicianRepository.findById(id)
-      .map(ResponseEntity::ok)
+      .map(musician -> {
+          EntityModel<Musician> resource = EntityModel.of(musician);
+          resource.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(MusicianController.class).getMusicianById(id)).withSelfRel());
+          resource.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(MusicianController.class).getAllMusicians()).withRel("all-musicians"));
+          return ResponseEntity.ok(resource);
+      })
       .orElse(ResponseEntity.notFound().build());
   }
 
@@ -83,8 +90,11 @@ public class MusicianController {
           description = "Invalid musician data provided"
   )
   @PostMapping("/")
-  public ResponseEntity<Musician> createMusician(@RequestBody Musician musician) {
-    return ResponseEntity.ok(musicianRepository.save(musician));
+  public ResponseEntity<EntityModel<Musician>> createMusician(@RequestBody Musician musician) {
+    Musician savedMusician = musicianRepository.save(musician);
+    EntityModel<Musician> resource = EntityModel.of(savedMusician);
+    resource.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(MusicianController.class).getMusicianById(savedMusician.getMusicId())).withSelfRel());
+    return ResponseEntity.ok(resource);
   }
 
   @Operation(
@@ -108,14 +118,17 @@ public class MusicianController {
           required = true
   )
   @PutMapping("/{id}")
-  public ResponseEntity<Musician> updateMusician(@PathVariable UUID id, @RequestBody Musician musicianDetails) {
+  public ResponseEntity<EntityModel<Musician>> updateMusician(@PathVariable UUID id, @RequestBody Musician musicianDetails) {
     return musicianRepository.findById(id).map(musician -> {
       musician.setGenre(musicianDetails.getGenre());
       musician.setInstrumentsPlayed(musicianDetails.getInstrumentsPlayed());
       musician.setYearsOfExperience(musicianDetails.getYearsOfExperience());
       musician.setSampleWorks(musicianDetails.getSampleWorks());
       musician.setAvailability(musicianDetails.getAvailability());
-      return ResponseEntity.ok(musicianRepository.save(musician));
+      Musician updatedMusician = musicianRepository.save(musician);
+      EntityModel<Musician> resource = EntityModel.of(updatedMusician);
+      resource.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(MusicianController.class).getMusicianById(updatedMusician.getMusicId())).withSelfRel());
+      return ResponseEntity.ok(resource);
     }).orElse(ResponseEntity.notFound().build());
   }
 

@@ -8,6 +8,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.hateoas.EntityModel;
+// import org.springframework.hateoas.Link;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -56,9 +59,14 @@ public class AccountController {
           description = "Account not found"
   )
   @GetMapping("/{id}")
-  public ResponseEntity<Account> getAccountById(@PathVariable UUID id) {
+  public ResponseEntity<EntityModel<Account>> getAccountById(@PathVariable UUID id) {
     return accountRepository.findById(id)
-      .map(ResponseEntity::ok)
+      .map(account -> {
+          EntityModel<Account> resource = EntityModel.of(account);
+          resource.add(linkTo(methodOn(AccountController.class).getAccountById(id)).withSelfRel());
+          resource.add(linkTo(methodOn(AccountController.class).getAllAccounts()).withRel("accounts"));
+          return ResponseEntity.ok(resource);
+      })
       .orElse(ResponseEntity.notFound().build());
   }
 
@@ -79,8 +87,12 @@ public class AccountController {
           description = "Invalid account data provided"
   )
   @PostMapping("/")
-  public ResponseEntity<Account> createAccount(@RequestBody Account account) {
-    return ResponseEntity.ok(accountRepository.save(account));
+  public ResponseEntity<EntityModel<Account>> createAccount(@RequestBody Account account) {
+    Account savedAccount = accountRepository.save(account);
+    EntityModel<Account> resource = EntityModel.of(savedAccount);
+    resource.add(linkTo(methodOn(AccountController.class).getAccountById(savedAccount.getUserId())).withSelfRel());
+    resource.add(linkTo(methodOn(AccountController.class).getAllAccounts()).withRel("accounts"));
+    return ResponseEntity.ok(resource);
   }
 
   @Operation(
@@ -104,12 +116,12 @@ public class AccountController {
           required = true
   )
   @PutMapping("/{id}")
-  public ResponseEntity<Account> updateAccount(@PathVariable UUID id, @RequestBody Account accountDetails) {
+  public ResponseEntity<EntityModel<Account>> updateAccount(@PathVariable UUID id, @RequestBody Account accountDetails) {
     return accountRepository.findById(id).map(account -> {
       account.setUsername(accountDetails.getUsername());
       account.setEmail(accountDetails.getEmail());
       account.setPasswordHash(accountDetails.getPasswordHash());
-      return ResponseEntity.ok(accountRepository.save(account));
+      return ResponseEntity.ok(EntityModel.of(accountRepository.save(account)));
     }).orElse(ResponseEntity.notFound().build());
   }
 

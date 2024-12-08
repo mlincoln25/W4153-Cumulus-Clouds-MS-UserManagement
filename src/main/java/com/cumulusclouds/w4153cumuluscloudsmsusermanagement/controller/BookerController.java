@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.hateoas.EntityModel;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.model.Booker;
 import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.repository.BookerRepository;
@@ -35,8 +37,15 @@ public class BookerController {
           )
   )
   @GetMapping("/")
-  public ResponseEntity<List<Booker>> getAllBookers() {
-    return ResponseEntity.ok(bookerRepository.findAll());
+  public ResponseEntity<List<EntityModel<Booker>>> getAllBookers() {
+    List<Booker> bookers = bookerRepository.findAll();
+    List<EntityModel<Booker>> resources = bookers.stream()
+        .map((Booker booker) -> EntityModel.of(booker,
+            linkTo(methodOn(BookerController.class).getBookerById(booker.getBookerId())).withSelfRel(),
+            linkTo(methodOn(BookerController.class).updateBooker(booker.getBookerId(), booker)).withRel("update"),
+            linkTo(methodOn(BookerController.class).deleteBooker(booker.getBookerId())).withRel("delete")))
+        .toList();
+    return ResponseEntity.ok(resources);
   }
 
   @Operation(
@@ -60,8 +69,12 @@ public class BookerController {
           required = true
   )
   @GetMapping("/{id}")
-  public ResponseEntity<Booker> getBookerById(@PathVariable UUID id) {
+  public ResponseEntity<EntityModel<Booker>> getBookerById(@PathVariable UUID id) {
     return bookerRepository.findById(id)
+      .map(booker -> EntityModel.of(booker,
+          linkTo(methodOn(BookerController.class).getBookerById(id)).withSelfRel(),
+          linkTo(methodOn(BookerController.class).updateBooker(id, booker)).withRel("update"),
+          linkTo(methodOn(BookerController.class).deleteBooker(id)).withRel("delete")))
       .map(ResponseEntity::ok)
       .orElse(ResponseEntity.notFound().build());
   }
@@ -83,8 +96,12 @@ public class BookerController {
           description = "Invalid booker data provided"
   )
   @PostMapping("/")
-  public ResponseEntity<Booker> createBooker(@RequestBody Booker booker) {
-    return ResponseEntity.ok(bookerRepository.save(booker));
+  public ResponseEntity<EntityModel<Booker>> createBooker(@RequestBody Booker booker) {
+    Booker savedBooker = bookerRepository.save(booker);
+    EntityModel<Booker> resource = EntityModel.of(savedBooker,
+        linkTo(methodOn(BookerController.class).getBookerById(savedBooker.getBookerId())).withSelfRel(),
+        linkTo(methodOn(BookerController.class).getAllBookers()).withRel("bookers"));
+    return ResponseEntity.ok(resource);
   }
 
   @Operation(
@@ -108,13 +125,17 @@ public class BookerController {
           required = true
   )
   @PutMapping("/{id}")
-  public ResponseEntity<Booker> updateBooker(@PathVariable UUID id, @RequestBody Booker bookerDetails) {
+  public ResponseEntity<EntityModel<Booker>> updateBooker(@PathVariable UUID id, @RequestBody Booker bookerDetails) {
     return bookerRepository.findById(id).map(booker -> {
       booker.setOrganizationName(bookerDetails.getOrganizationName());
       booker.setPreferredGenres(bookerDetails.getPreferredGenres());
       booker.setEventType(bookerDetails.getEventType());
       booker.setBookingHistory(bookerDetails.getBookingHistory());
-      return ResponseEntity.ok(bookerRepository.save(booker));
+      Booker updatedBooker = bookerRepository.save(booker);
+      EntityModel<Booker> resource = EntityModel.of(updatedBooker,
+          linkTo(methodOn(BookerController.class).getBookerById(updatedBooker.getBookerId())).withSelfRel(),
+          linkTo(methodOn(BookerController.class).getAllBookers()).withRel("bookers"));
+      return ResponseEntity.ok(resource);
     }).orElse(ResponseEntity.notFound().build());
   }
 
