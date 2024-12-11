@@ -14,9 +14,21 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
+import java.util.Date;
 
 import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.repository.AccountRepository;
 import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.model.Account;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Value;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import javax.crypto.SecretKey;
+import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.repository.BookerRepository;
+import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.model.Booker;
+import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.repository.MusicianRepository;
+import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.model.Musician;
 
 @RestController
 @RequestMapping("/api/accounts")
@@ -24,6 +36,21 @@ public class AccountController {
 
   @Autowired
   private AccountRepository accountRepository;
+
+  @Autowired
+  private PasswordEncoder passwordEncoder;
+
+  @Value("${jwt.secret}")
+  private String jwtSecret;
+
+  @Value("${jwt.expiration}")
+  private long jwtExpirationInMs;
+
+  @Autowired
+  private BookerRepository bookerRepository;
+
+  @Autowired
+  private MusicianRepository musicianRepository;
 
   @Operation(
           summary = "Retrieve all accounts",
@@ -150,5 +177,135 @@ public class AccountController {
       return ResponseEntity.notFound().build();
     }
   }
-  
+
+  @PostMapping("/login")
+  public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+    Optional<Account> optionalAccount = accountRepository.findByUsername(loginRequest.getUsername());
+    
+    if (optionalAccount.isEmpty()) {
+        return ResponseEntity.status(401).body("{ \"message\": \"Invalid username or password\" }");
+    }
+
+    Account account = optionalAccount.get();
+    if (!passwordEncoder.matches(loginRequest.getPassword(), account.getPasswordHash())) {
+        return ResponseEntity.status(401).body("{ \"message\": \"Invalid username or password\" }");
+    }
+
+    // Generate JWT Token
+    String token = generateToken(account);
+    return ResponseEntity.ok("{ \"token\": \"" + token + "\", \"message\": \"Login successful\" }");
+  }
+
+  private String generateToken(Account account) {
+    SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    
+    return Jwts.builder()
+            .setSubject(account.getUserId().toString()) // The subject can be user ID or any identifier
+            .claim("username", account.getUsername())
+            .claim("role", "ROLE_USER") // Add additional claims if necessary
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationInMs)) // Set token expiration
+            .signWith(key, SignatureAlgorithm.HS256) // Use HS256 algorithm with the secret key
+            .compact();
+  }
+
+  // Data class for login requests
+  public static class LoginRequest {
+    private String username;
+    private String password;
+
+    // Getters and Setters
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+  }
+
+  @PostMapping("/register")
+  public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
+    // Check if username or email already exists
+    if (accountRepository.findByUsername(registerRequest.getUsername()).isPresent() ||
+        accountRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
+        return ResponseEntity.status(400).body("{ \"message\": \"Username or email already exists\" }");
+    }
+
+    // Create new account
+    Account newAccount = new Account();
+    newAccount.setUsername(registerRequest.getUsername());
+    newAccount.setEmail(registerRequest.getEmail());
+    newAccount.setPasswordHash(passwordEncoder.encode(registerRequest.getPassword()));
+
+    // Save account to the repository
+    Account savedAccount = accountRepository.save(newAccount);
+
+    // Return success response
+    return ResponseEntity.ok("{ \"message\": \"Registration successful\" }");
+  }
+
+  // Data class for register requests
+  public static class RegisterRequest {
+    private String username;
+    private String email;
+    private String password;
+
+    // Getters and Setters
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+  }
+
+  @GetMapping("/{id}/bookers")
+  public ResponseEntity<List<Booker>> getBookersForAccount(@PathVariable UUID id) {
+    Optional<Account> accountOptional = accountRepository.findById(id);
+
+    if (accountOptional.isEmpty()) {
+        return ResponseEntity.notFound().build();
+    }
+
+    List<Booker> bookers = bookerRepository.findByAccount(accountOptional.get());
+    return ResponseEntity.ok(bookers);
+  }
+
+  @GetMapping("/{id}/musicians")
+  public ResponseEntity<List<Musician>> getMusiciansForAccount(@PathVariable UUID id) {
+    Optional<Account> accountOptional = accountRepository.findById(id);
+
+    if (accountOptional.isEmpty()) {
+        return ResponseEntity.notFound().build();
+    }
+
+    List<Musician> musicians = musicianRepository.findByAccount(accountOptional.get());
+    return ResponseEntity.ok(musicians);
+  }
 }

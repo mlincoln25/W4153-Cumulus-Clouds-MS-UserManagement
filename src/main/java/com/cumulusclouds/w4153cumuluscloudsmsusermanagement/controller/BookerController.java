@@ -13,9 +13,12 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.model.Booker;
 import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.repository.BookerRepository;
+import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.model.Account;
+import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.repository.AccountRepository;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/bookers")
@@ -23,6 +26,9 @@ public class BookerController {
 
   @Autowired
   private BookerRepository bookerRepository;
+
+  @Autowired
+  private AccountRepository accountRepository;
 
   @Operation(
           summary = "Retrieve all bookers",
@@ -96,11 +102,20 @@ public class BookerController {
           description = "Invalid booker data provided"
   )
   @PostMapping("/")
-  public ResponseEntity<EntityModel<Booker>> createBooker(@RequestBody Booker booker) {
+  public ResponseEntity<EntityModel<Booker>> createBooker(@RequestBody Booker booker, @RequestParam UUID accountId) {
+    Optional<Account> accountOptional = accountRepository.findById(accountId);
+
+    if (accountOptional.isEmpty()) {
+        return ResponseEntity.badRequest().body(null); // Return error if account is not found
+    }
+
+    booker.setAccount(accountOptional.get());
     Booker savedBooker = bookerRepository.save(booker);
+
     EntityModel<Booker> resource = EntityModel.of(savedBooker,
         linkTo(methodOn(BookerController.class).getBookerById(savedBooker.getBookerId())).withSelfRel(),
         linkTo(methodOn(BookerController.class).getAllBookers()).withRel("bookers"));
+
     return ResponseEntity.ok(resource);
   }
 

@@ -13,9 +13,12 @@ import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 
 import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.model.Musician;
 import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.repository.MusicianRepository;
+import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.model.Account;
+import com.cumulusclouds.w4153cumuluscloudsmsusermanagement.repository.AccountRepository;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/musicians")
@@ -23,6 +26,9 @@ public class MusicianController {
 
   @Autowired
   private MusicianRepository musicianRepository;
+
+  @Autowired
+  private AccountRepository accountRepository;
 
   @Operation(
           summary = "Retrieve all musicians",
@@ -90,10 +96,20 @@ public class MusicianController {
           description = "Invalid musician data provided"
   )
   @PostMapping("/")
-  public ResponseEntity<EntityModel<Musician>> createMusician(@RequestBody Musician musician) {
+  public ResponseEntity<EntityModel<Musician>> createMusician(@RequestBody Musician musician, @RequestParam UUID accountId) {
+    Optional<Account> accountOptional = accountRepository.findById(accountId);
+
+    if (accountOptional.isEmpty()) {
+        return ResponseEntity.badRequest().body(null); // Return error if account is not found
+    }
+
+    musician.setAccount(accountOptional.get());
     Musician savedMusician = musicianRepository.save(musician);
+
     EntityModel<Musician> resource = EntityModel.of(savedMusician);
     resource.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(MusicianController.class).getMusicianById(savedMusician.getMusicId())).withSelfRel());
+    resource.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(MusicianController.class).getAllMusicians()).withRel("all-musicians"));
+
     return ResponseEntity.ok(resource);
   }
 
